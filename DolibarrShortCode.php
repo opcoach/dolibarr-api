@@ -11,7 +11,7 @@ add_shortcode('check_dolibarr_status', function () {
 
     $status = get_transient($transient_key);
     if ($status === false) {
-        $data = DolibarrObject::fetchFromDolibarr('/products?limit=1');
+        $data = DolibarrObject::fetchFromDolibarr('/status', 1, 1);
         $status = (is_array($data) || is_object($data)) ? 'ok' : 'ko';
         set_transient($transient_key, $status, HOUR_IN_SECONDS);
         set_transient('dolibarr_status_time', current_time('mysql'), HOUR_IN_SECONDS);
