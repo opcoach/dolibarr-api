@@ -84,6 +84,10 @@ abstract class DolibarrObject
         echo "<pre>" . $formattedData . "</pre>";
     }
 
+    public function getLines(): ?array {
+        return $this->data->lines ?? null;
+    }
+
     /**
      * Convertit un timestamp UNIX en une date formatée (Y-m-d), avec gestion du fuseau horaire.
      *

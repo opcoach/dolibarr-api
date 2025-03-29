@@ -49,6 +49,7 @@ class DolibarrInvoice extends DolibarrObject {
         return $this->getType() === DolibarrInvoiceType::BALANCE;
     }
 
+
     public function getPdfDocumentURL(): ?string
     {
         $filenames = $this->getFilenames("invoice", $this->getRef());

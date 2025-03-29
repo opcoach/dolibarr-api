@@ -351,22 +351,25 @@ public function getElearningPlatform(): ?string {
      *
      * @return DolibarrInvoice[] Liste des objets DolibarrInvoice.
      */
-    public function getInvoices(): array
+    public function getInvoices(?DolibarrInvoiceType $filterType = null): array
     {
         $invoices = [];
-
+    
         // Récupère les IDs des factures associées à la proposition
         $invoiceIds = $this->getInvoiceIds();
-
+    
         foreach ($invoiceIds as $invoiceId) {
             $invoice = DolibarrInvoice::getInvoiceFromID($invoiceId);
             if ($invoice) {
-                $invoices[] = $invoice; // Ajoute la facture valide à la liste
+                // Si aucun filtre, ou si le type correspond au filtre, on l'ajoute
+                if (is_null($filterType) || $invoice->getType() === $filterType->value) {
+                    $invoices[] = $invoice;
+                }
             } else {
                 error_log("Impossible de récupérer la facture avec l'ID : $invoiceId");
             }
         }
-
+    
         return $invoices;
     }
     
