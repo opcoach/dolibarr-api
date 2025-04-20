@@ -12,4 +12,5 @@ defined('ABSPATH') || exit;
 require_once plugin_dir_path(__FILE__) . 'DolibarrObject.php';
 require_once plugin_dir_path(__FILE__) . 'DolibarrInvoice.php';
 require_once plugin_dir_path(__FILE__) . 'DolibarrProposal.php';
+require_once plugin_dir_path(__FILE__) . 'DolibarrEvent.php';
 require_once plugin_dir_path(__FILE__) . 'DolibarrShortCode.php';

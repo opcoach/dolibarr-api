@@ -66,6 +66,11 @@ class DolibarrProposal extends DolibarrObject {
         return $this->data->ref ?? null;
     }
 
+    public function getProjectId() {
+        return $this->data->fk_project ?? null;
+    }
+
+
     public function getStatus() {
         return $this->data->status ?? null;
     }
