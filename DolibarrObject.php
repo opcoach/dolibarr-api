@@ -64,9 +64,9 @@ abstract class DolibarrObject
             return null;
         }
 
-       // Nettoyage des caractères problématiques
-       $response = mb_convert_encoding($response, 'UTF-8', 'auto');
-       $response = stripslashes($response);
+        // Nettoyage des caractères problématiques
+        $response = mb_convert_encoding($response, 'UTF-8', 'auto');
+        $response = stripslashes($response);
 
         $data = json_decode($response);
 
@@ -78,13 +78,79 @@ abstract class DolibarrObject
         }
     }
 
-    public function printData() {
+    public static function postToDolibarr($endpoint, $payload, $retryCount = 3, $initialDelaySeconds = 10)
+    {
+        $apiKey = DOLIBARR_API_KEY;
+        $url = DOLIBARR_REST_URL . $endpoint;
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "DOLAPIKEY: $apiKey",
+            "Content-Type: application/json"
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
+        $attempts = 0;
+        $response = false;
+
+        while ($attempts < $retryCount && !$response) {
+            $response = curl_exec($ch);
+            $attempts++;
+
+            if (curl_errno($ch)) {
+                error_log("Tentative POST $attempts : Erreur cURL : " . curl_error($ch));
+                $response = false;
+            } else {
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                if (!in_array($httpCode, [200, 201])) {
+                    error_log("Tentative POST $attempts : Erreur HTTP : $httpCode pour l'URL : $url");
+                    $response = false;
+
+                    if ($httpCode == 429) {
+                        sleep($initialDelaySeconds * $attempts);
+                    }
+                } else {
+                    break;
+                }
+            }
+
+            if (!$response && $httpCode != 429) {
+                sleep($initialDelaySeconds);
+            }
+        }
+
+        curl_close($ch);
+
+        if (!$response) {
+            error_log("Échec de POST vers Dolibarr après $retryCount tentatives.");
+            return null;
+        }
+
+        $response = mb_convert_encoding($response, 'UTF-8', 'auto');
+        $response = stripslashes($response);
+        $data = json_decode($response);
+
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $data;
+        } else {
+            error_log('Erreur de décodage JSON dans POST : ' . json_last_error_msg());
+            return null;
+        }
+    }
+
+    public function printData()
+    {
         // Vérifie si $this->data est un objet ou un tableau et le convertit en JSON formaté
         $formattedData = json_encode($this->data, JSON_PRETTY_PRINT);
         echo "<pre>" . $formattedData . "</pre>";
     }
 
-    public function getLines(): ?array {
+    public function getLines(): ?array
+    {
         return $this->data->lines ?? null;
     }
 
@@ -95,7 +161,7 @@ abstract class DolibarrObject
      * @param string $timezone Le fuseau horaire (par défaut 'Europe/Paris').
      * @return string|null La date formatée ou null si la valeur est invalide.
      */
-    protected function getFormattedDate($timestamp, $timezone = 'Europe/Paris') : ?string
+    protected function getFormattedDate($timestamp, $timezone = 'Europe/Paris'): ?string
     {
         if (empty($timestamp)) {
             return null; // Si la date est vide ou nulle
@@ -150,6 +216,4 @@ abstract class DolibarrObject
 
         return $filenames;
     }
-
 }
-
