@@ -5,14 +5,27 @@ abstract class DolibarrObject
 {
     protected $data;
 
-    // Propriété statique pour stocker le token CSRF
-    private static ?string $csrfToken = null;
-
-
     public function __construct($data)
     {
-        $this->data = $data;
+        if (is_object($data)) {
+            $this->data = $data;
+        } else {
+            $this->data = new stdClass();
+        }
     }
+
+    /**
+     * Définit un champ dans la structure de données à envoyer à Dolibarr.
+     *
+     * @param string $key Nom du champ
+     * @param mixed $value Valeur du champ
+     * @return void
+     */
+    public function set(string $key, $value): void
+    {
+        $this->data->$key = $value;
+    }
+
 
     public static function fetchFromDolibarr($endpoint, $retryCount = 3, $initialDelaySeconds = 10)
     {
@@ -78,10 +91,21 @@ abstract class DolibarrObject
         }
     }
 
-    public static function postToDolibarr($endpoint, $payload, $retryCount = 3, $initialDelaySeconds = 10)
+    /**
+     * Effectue une requête POST vers l'API REST de Dolibarr.
+     *
+     * @param string $endpoint Endpoint REST (ex: /supplierinvoices)
+     * @param mixed $payload Données à envoyer (tableau ou objet)
+     * @param int $retryCount Nombre de tentatives en cas d’échec
+     * @param int $initialDelaySeconds Temps d’attente entre les tentatives
+     * @return object|null Réponse JSON décodée sous forme d’objet, ou null en cas d’erreur
+     */
+    public static function postToDolibarr($endpoint, $payload, $retryCount = 3, $initialDelaySeconds = 10): ?object
     {
         $apiKey = DOLIBARR_API_KEY;
         $url = DOLIBARR_REST_URL . $endpoint;
+
+        $jsonPayload = json_encode(is_object($payload) ? (array)$payload : $payload);
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -91,7 +115,7 @@ abstract class DolibarrObject
             "DOLAPIKEY: $apiKey",
             "Content-Type: application/json"
         ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $attempts = 0;
@@ -132,9 +156,15 @@ abstract class DolibarrObject
 
         $response = mb_convert_encoding($response, 'UTF-8', 'auto');
         $response = stripslashes($response);
+
+        error_log("Réponse Dolibarr brute : " . $response);
         $data = json_decode($response);
 
         if (json_last_error() === JSON_ERROR_NONE) {
+            // Cas spécial : Dolibarr renvoie parfois un int directement
+            if (is_int($data)) {
+                return (object)['result' => $data]; // On encapsule l'entier dans un objet
+            }
             return $data;
         } else {
             error_log('Erreur de décodage JSON dans POST : ' . json_last_error_msg());
@@ -152,6 +182,21 @@ abstract class DolibarrObject
     public function getLines(): ?array
     {
         return $this->data->lines ?? null;
+    }
+
+    /**
+     * Ajoute une ligne dans le tableau data->lines de l'objet courant.
+     *
+     * @param array $line Ligne de facture Dolibarr formatée
+     * @return void
+     */
+    public function addLine(array $line): void
+    {
+        if (!isset($this->data->lines) || !is_array($this->data->lines)) {
+            $this->data->lines = [];
+        }
+
+        $this->data->lines[] = $line;
     }
 
     /**

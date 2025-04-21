@@ -2,8 +2,39 @@
 
 class DolibarrSupplierInvoice extends DolibarrObject
 {
-    /** @var array Liste des lignes de la facture */
-    private array $lines = [];
+
+    private $uniqueRef;   // A unique Ref used to ensure supplier invoice is unique
+    /**
+     * Constructeur : initialise les données par défaut de la facture.
+     *
+     * @param object|null $data Données initiales éventuelles (non utilisé ici)
+     */
+    public function __construct(?object $data = null)
+    {
+        parent::__construct($data);
+
+        // On se donne 5j pour payer... 
+        $dateEcheance = (new DateTime())->add(new DateInterval('P5D'))->getTimestamp();
+
+        $this->data = new stdClass();
+        $this->data->type = 0; // 0 = Standard, 2 = Acompte
+        $this->data->date = date("Y-m-d");
+        $this->data->date_lim_reglement = $dateEcheance;
+        $this->data->mode_reglement_id = '2'; // Virement
+        $this->data->cond_reglement_id = '16'; // À réception
+        $this->data->multicurrency_code = 'EUR';
+        $this->data->multicurrency_tx = '1.00000000';
+        $this->data->cond_reglement_code = 'RECEP';
+        $this->data->cond_reglement_doc = 'Règlement à réception';
+        $this->data->mode_reglement_code = 'VIR';
+        $this->data->fk_account = '1'; // ID du compte opcoach
+    }
+
+    public function setUniqueRef(string $uniqueRef): void
+    {
+        $this->uniqueRef = $uniqueRef;
+    }
+
 
     /**
      * Ajoute une ligne de facture fournisseur.
@@ -15,7 +46,7 @@ class DolibarrSupplierInvoice extends DolibarrObject
      * @param int|null $fk_product ID produit (optionnel)
      * @return void
      */
-    public function addLine(string $desc, float $qty, float $unitprice, float $tva = 0.0, ?int $fk_product = null): void
+    public function addSupplierLine(string $desc, float $qty, float $unitprice, float $tva = 0.0, ?int $fk_product = null): void
     {
         $line = [
             'desc'     => $desc,
@@ -29,7 +60,7 @@ class DolibarrSupplierInvoice extends DolibarrObject
             $line['fk_product'] = $fk_product;
         }
 
-        $this->lines[] = $line;
+        parent::addLine($line);
     }
 
     /**
@@ -41,29 +72,39 @@ class DolibarrSupplierInvoice extends DolibarrObject
      * @param int|null $fk_project ID du projet Dolibarr (optionnel)
      * @return array|null Résultat de l’API ou null en cas d’échec
      */
-    public function createInvoice(string $supplier_id, string $label, string $date, ?int $fk_project = null): ?array
+    public function createInDolibarr(string $supplier_id, string $label, string $date, string $refExt, ?string $fk_project = null): ?object
     {
-        $data = [
-            'socid' => $supplier_id,
-            'label' => $label,
-            'date'  => $date,
-            'lines' => $this->lines,
-        ];
-
+        $this->set('socid', $supplier_id);
+        $this->set('label', $label);
+        $this->set('date', $date);
+        $this->set('ref_ext', $refExt);
+        $this->set('ref_supplier',  $refExt . "-" . $this->uniqueRef);
+    
         if ($fk_project !== null) {
-            $data['fk_project'] = $fk_project;
+            $this->set('fk_project', $fk_project);
         }
 
-        return DolibarrObject::postToDolibarr('/supplierinvoices', $data);
+        error_log("Payload envoyé à Dolibarr : " . json_encode($this->data, JSON_PRETTY_PRINT));
+        $result =  DolibarrObject::postToDolibarr('/supplierinvoices', $this->data);
+
+         // ✅ Validation automatique si succès
+        if (is_object($result) && isset($result->id)) {
+            $validated = self::validateInvoice((int) $result->id);
+            return $validated ?: $result;
+         }
+
+        return $result;
     }
 
-    /**
-     * Retourne les lignes actuellement ajoutées.
+
+     /**
+     * Valide une facture fournisseur après sa création.
      *
-     * @return array
+     * @param int $invoiceId ID de la facture à valider
+     * @return object|null Résultat de l’appel API
      */
-    public function getLines(): array
+    public static function validateInvoice(int $invoiceId): ?object
     {
-        return $this->lines;
+        return self::postToDolibarr("/supplierinvoices/$invoiceId/validate", []);
     }
 }
