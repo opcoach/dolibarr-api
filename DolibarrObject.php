@@ -5,7 +5,7 @@ abstract class DolibarrObject
 {
     protected $data;
 
-    public function __construct($data)
+    public function __construct($data = null)
     {
         if (is_object($data)) {
             $this->data = $data;

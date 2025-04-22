@@ -94,6 +94,23 @@ class DolibarrProposal extends DolibarrObject {
     }
 
 
+      /** Retourne le code du produit pour les heures */
+      public function getHourProductID(): ?string {
+        $lines = $this->data->lines; 
+       foreach($lines as $line)
+        {
+            if (strpos($line->ref, 'H_') === 0)
+            {
+                 return $line->fk_product;
+            }
+         }
+        return null;
+    }
+
+
+
+
+
     public function getDureeEnHeure(): ?float {
         // Retourne la valeur convertie en flottant si elle existe, sinon retourne null
         return isset($this->data->array_options->options_dureenh) ? (float)$this->data->array_options->options_dureenh : null;

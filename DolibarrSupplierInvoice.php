@@ -40,7 +40,7 @@ class DolibarrSupplierInvoice extends DolibarrObject
      * @param int|null $fk_product ID produit (optionnel)
      * @return void
      */
-    public function addSupplierLine(string $desc, float $qty, float $unitprice, float $tva = 0.0, ?int $fk_product = null): void
+    public function addSupplierLine(string $desc, float $qty, float $unitprice, float $tva = 0.0, ?string $fk_product = null): void
     {
         $line = [
             'desc'     => $desc,
@@ -51,7 +51,14 @@ class DolibarrSupplierInvoice extends DolibarrObject
         ];
 
         if ($fk_product !== null) {
-            $line['fk_product'] = $fk_product;
+            $line['product_ref'] = $fk_product;
+            $line['ref'] = $fk_product;
+            $line['product_type'] = '1'; // Service
+            $line['fk_product'] = $fk_product; // Service
+            $product = new DolibarrProduct($fk_product);
+            if ($product) {
+                $line['desc'] = $product->getLabel();
+            } 
         }
 
         parent::addLine($line);
