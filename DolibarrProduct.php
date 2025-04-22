@@ -60,5 +60,41 @@ class DolibarrProduct extends DolibarrObject
         return $this->data->label ?? null;
     }
 
-    // ➕ Tu peux ajouter d'autres getters selon les besoins
+    /**
+     * Retourne le prix unitaire du produit/service.
+     *
+     * @return float|null
+     */
+    public static function getPriceForSupplier(string $productID, string $supplierID): ?float
+    {
+        // Endpoint pour récupérer les prix d'achat liés au produit
+        $endpoint = "/products/purchase_prices?sortfield=t.ref&sortorder=ASC&limit=100&supplier=" . urlencode($supplierID);
+    
+        $result = self::fetchFromDolibarr($endpoint);
+    
+        if (!is_object($result)) {
+            error_log("❌ Erreur lors de la récupération des prix pour le produit $productID.");
+            return 0.0;
+        }
+    
+        // Vérifier que le produit existe dans la réponse
+        if (!isset($result->$productID) || !is_array($result->$productID)) {
+            error_log("❌ Aucun prix trouvé pour le produit ID $productID.");
+            return 0.0;
+        }
+    
+        $prices = $result->$productID;
+    
+        // Parcourir les prix pour trouver celui du bon fournisseur
+        foreach ($prices as $priceInfo) {
+            if (isset($priceInfo->fourn_id) && $priceInfo->fourn_id == $supplierID) {
+                if (isset($priceInfo->fourn_price)) {
+                    return floatval($priceInfo->fourn_price);
+                }
+            }
+        }
+    
+        error_log("❌ Aucun prix trouvé pour le produit ID $productID chez le fournisseur ID $supplierID.");
+        return 0.0;
+    }
 }
