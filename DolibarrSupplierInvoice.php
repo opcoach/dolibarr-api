@@ -68,14 +68,14 @@ class DolibarrSupplierInvoice extends DolibarrObject
      */
     public function createInDolibarr(): ?object
     {
-       
+
         $result =  DolibarrObject::postToDolibarr('/supplierinvoices', $this->data);
 
         return $result;
     }
 
 
-     /**
+    /**
      * Valide une facture fournisseur après sa création.
      *
      * @param int $invoiceId ID de la facture à valider
@@ -84,5 +84,29 @@ class DolibarrSupplierInvoice extends DolibarrObject
     public static function validateInvoice(string $invoiceId): ?object
     {
         return self::postToDolibarr("/supplierinvoices/$invoiceId/validate", []);
+    }
+
+    public static function requestPayment(string $invoiceId): bool
+    {
+        $endpoint = "/supplierinvoices/{$invoiceId}/paymentrequest";
+
+        // Paramètres requis
+        $data = [
+            'datepaye'         => date('Y-m-d'),   // Date du jour
+            'payment_mode_id'  => 2,               // Exemple : 2 = Virement (à ajuster si besoin)
+            'closepaidinvoices' => 'yes',           // On clôture la facture après paiement
+            'accountid'        => 1,               // ID du compte bancaire 
+            'comment'          => 'Paiement automatique via API',
+        ];
+
+        // Appel API POST
+        $response = self::postToDolibarr($endpoint, $data);
+
+        if ($response && isset($response->success) && $response->success) {
+            return true;
+        }
+
+        error_log("❌ Échec de la demande de paiement pour la facture ID $invoiceId : " . print_r($response, true));
+        return false;
     }
 }
