@@ -26,6 +26,7 @@ abstract class DolibarrObject
         $this->data->$key = $value;
     }
 
+   
 
     public static function fetchFromDolibarr($endpoint, $retryCount = 3, $initialDelaySeconds = 10)
     {

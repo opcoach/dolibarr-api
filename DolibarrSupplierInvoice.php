@@ -3,7 +3,6 @@
 class DolibarrSupplierInvoice extends DolibarrObject
 {
 
-    private $uniqueRef;   // A unique Ref used to ensure supplier invoice is unique
     /**
      * Constructeur : initialise les données par défaut de la facture.
      *
@@ -13,13 +12,13 @@ class DolibarrSupplierInvoice extends DolibarrObject
     {
         parent::__construct($data);
 
-        // On se donne 5j pour payer... 
-        $dateEcheance = (new DateTime())->add(new DateInterval('P5D'))->getTimestamp();
+        $dateEcheance = (new DateTime())->add(new DateInterval('P30D'))->format('Y-m-d');
+        $currentDate = (new DateTime())->format('Y-m-d');
 
         $this->data = new stdClass();
         $this->data->type = 0; // 0 = Standard, 2 = Acompte
-        $this->data->date = date("Y-m-d");
-        $this->data->date_lim_reglement = $dateEcheance;
+        $this->data->date = $currentDate;
+        $this->data->date_echeance = $dateEcheance;
         $this->data->mode_reglement_id = '2'; // Virement
         $this->data->cond_reglement_id = '16'; // À réception
         $this->data->multicurrency_code = 'EUR';
@@ -28,11 +27,6 @@ class DolibarrSupplierInvoice extends DolibarrObject
         $this->data->cond_reglement_doc = 'Règlement à réception';
         $this->data->mode_reglement_code = 'VIR';
         $this->data->fk_account = '1'; // ID du compte opcoach
-    }
-
-    public function setUniqueRef(string $uniqueRef): void
-    {
-        $this->uniqueRef = $uniqueRef;
     }
 
 
@@ -72,26 +66,10 @@ class DolibarrSupplierInvoice extends DolibarrObject
      * @param int|null $fk_project ID du projet Dolibarr (optionnel)
      * @return array|null Résultat de l’API ou null en cas d’échec
      */
-    public function createInDolibarr(string $supplier_id, string $label, string $date, string $refExt, ?string $fk_project = null): ?object
+    public function createInDolibarr(): ?object
     {
-        $this->set('socid', $supplier_id);
-        $this->set('label', $label);
-        $this->set('date', $date);
-        $this->set('ref_ext', $refExt);
-        $this->set('ref_supplier',  $refExt . "-" . $this->uniqueRef);
-    
-        if ($fk_project !== null) {
-            $this->set('fk_project', $fk_project);
-        }
-
-        error_log("Payload envoyé à Dolibarr : " . json_encode($this->data, JSON_PRETTY_PRINT));
+       
         $result =  DolibarrObject::postToDolibarr('/supplierinvoices', $this->data);
-
-         // ✅ Validation automatique si succès
-        if (is_object($result) && isset($result->id)) {
-            $validated = self::validateInvoice((int) $result->id);
-            return $validated ?: $result;
-         }
 
         return $result;
     }
@@ -103,7 +81,7 @@ class DolibarrSupplierInvoice extends DolibarrObject
      * @param int $invoiceId ID de la facture à valider
      * @return object|null Résultat de l’appel API
      */
-    public static function validateInvoice(int $invoiceId): ?object
+    public static function validateInvoice(string $invoiceId): ?object
     {
         return self::postToDolibarr("/supplierinvoices/$invoiceId/validate", []);
     }
