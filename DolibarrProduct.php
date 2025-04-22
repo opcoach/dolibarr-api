@@ -67,20 +67,20 @@ class DolibarrProduct extends DolibarrObject
      */
     public static function getPriceForSupplier(string $productID, string $supplierID): ?float
     {
-        // Endpoint pour récupérer les prix d'achat liés au produit
+        // Endpoint pour récupérer les prix d'achat liés au produit  Prix défaut = 5
         $endpoint = "/products/purchase_prices?sortfield=t.ref&sortorder=ASC&limit=100&supplier=" . urlencode($supplierID);
     
         $result = self::fetchFromDolibarr($endpoint);
     
         if (!is_object($result)) {
             error_log("❌ Erreur lors de la récupération des prix pour le produit $productID.");
-            return 0.0;
+            return 5.0;
         }
     
         // Vérifier que le produit existe dans la réponse
         if (!isset($result->$productID) || !is_array($result->$productID)) {
             error_log("❌ Aucun prix trouvé pour le produit ID $productID.");
-            return 0.0;
+            return 5.0;
         }
     
         $prices = $result->$productID;
@@ -94,7 +94,7 @@ class DolibarrProduct extends DolibarrObject
             }
         }
     
-        error_log("❌ Aucun prix trouvé pour le produit ID $productID chez le fournisseur ID $supplierID.");
-        return 0.0;
+        error_log("❌ Aucun prix trouvé pour le produit ID $productID chez le fournisseur ID $supplierID. on retourne 5 par défaut... ");
+        return 5.0;
     }
 }
