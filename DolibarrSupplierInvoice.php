@@ -69,7 +69,7 @@ class DolibarrSupplierInvoice extends DolibarrObject
     public function createInDolibarr(): ?object
     {
 
-        $result =  DolibarrObject::postToDolibarr('/supplierinvoices', $this->data);
+        $result =  DolibarrObject::postToDolibarr('/supplierinvoices?nodoc=1', $this->data);
 
         return $result;
     }
@@ -86,13 +86,19 @@ class DolibarrSupplierInvoice extends DolibarrObject
         return self::postToDolibarr("/supplierinvoices/$invoiceId/validate", []);
     }
 
-    public static function requestPayment(string $invoiceId): bool
+    public static function requestPayment(string $invoiceId, ?string $date = null): bool
     {
-        $endpoint = "/supplierinvoices/{$invoiceId}/paymentrequest";
+        $endpoint = "/supplierinvoices/{$invoiceId}/payments";
+        // Si une date est fournie, on la convertit en timestamp, sinon on prend la date actuelle
+        if ($date) {
+            $datePaiement = DateTime::createFromFormat('Y-m-d', $date)->getTimestamp();
+        } else {
+            $datePaiement = time();  // Timestamp actuel
+        }
 
         // Paramètres requis
         $data = [
-            'datepaye'         => date('Y-m-d'),   // Date du jour
+            'datepaye'         => $datePaiement,
             'payment_mode_id'  => 2,               // Exemple : 2 = Virement (à ajuster si besoin)
             'closepaidinvoices' => 'yes',           // On clôture la facture après paiement
             'accountid'        => 1,               // ID du compte bancaire 
@@ -102,7 +108,7 @@ class DolibarrSupplierInvoice extends DolibarrObject
         // Appel API POST
         $response = self::postToDolibarr($endpoint, $data);
 
-        if ($response && isset($response->success) && $response->success) {
+        if (is_object($response) && isset($response->result) && is_numeric($response->result)) {
             return true;
         }
 
