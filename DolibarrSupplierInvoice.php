@@ -30,6 +30,28 @@ class DolibarrSupplierInvoice extends DolibarrObject
     }
 
 
+    public static function linkToSupplierOrder_NEVERCALLED(string $invoiceId, string $supplierOrderId): bool
+    {
+
+        // Cette approche ne fonctionne pas -> Code Non appelé. Cf bug sur dolibarr : https://github.com/Dolibarr/dolibarr/issues/33959
+        $payload = [
+            'linkedObjectsIds' => [
+                'order_supplier' => [
+                    $supplierOrderId => $supplierOrderId
+                ]
+            ]
+        ];
+        
+        $response = DolibarrObject::putToDolibarr('/supplierinvoices/' . $invoiceId, $payload);
+
+        if (is_object($response) && (isset($response->success) && $response->success || isset($response->id))) {
+            return true;
+        }
+
+        error_log("❌ Échec du lien facture $invoiceId avec la commande fournisseur $supplierOrderId : " . print_r($response, true));
+        return false;
+    }
+
     /**
      * Ajoute une ligne de facture fournisseur.
      *
@@ -58,7 +80,7 @@ class DolibarrSupplierInvoice extends DolibarrObject
             $product = new DolibarrProduct($fk_product);
             if ($product) {
                 $line['desc'] = $product->getLabel();
-            } 
+            }
         }
 
         parent::addLine($line);

@@ -14,19 +14,7 @@ enum DolibarrInvoiceType: string {
 class DolibarrInvoice extends DolibarrObject {
    
 
-    // Méthodes "getter" pour chaque champ
-    public function getId() {
-        return $this->data->id ?? null;
-    }
-
-    public function getRef() {
-        return $this->data->ref ?? null;
-    }
-
-    public function getStatus() {
-        return $this->data->status ?? null;
-    }
-
+   
     public function getTotalHt() {
         return $this->data->total_ht ?? null;
     }
