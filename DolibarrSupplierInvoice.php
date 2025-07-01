@@ -130,7 +130,7 @@ class DolibarrSupplierInvoice extends DolibarrObject
             'datepaye'         => $datePaiement,
             'payment_mode_id'  => 2,               // Exemple : 2 = Virement (à ajuster si besoin)
             'closepaidinvoices' => 'yes',           // On clôture la facture après paiement
-            'accountid'        => 1,               // ID du compte bancaire 
+            'accountid'        => 2,               // ID du compte bancaire : wise
             'comment'          => 'Paiement automatique via API',
         ];
 
