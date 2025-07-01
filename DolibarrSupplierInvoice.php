@@ -26,7 +26,7 @@ class DolibarrSupplierInvoice extends DolibarrObject
         $this->data->cond_reglement_code = 'RECEP';
         $this->data->cond_reglement_doc = 'Règlement à réception';
         $this->data->mode_reglement_code = 'VIR';
-        $this->data->fk_account = '1'; // ID du compte opcoach
+        $this->data->fk_account = '2'; // ID du compte wise
     }
 
 
