@@ -56,6 +56,11 @@ enum ConditionDeFacturation: string
     case Autre = '60';
 }
 
+enum Banque: int
+{
+    case BPOC = 1;
+    case Wise = 2;
+}
 
 
 class DolibarrProposal extends DolibarrObject
