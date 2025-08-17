@@ -66,213 +66,10 @@ enum Banque: int
 class DolibarrProposal extends DolibarrObject
 {
 
-
-
     public function getTotalHt()
     {
         return $this->data->total_ht ?? null;
     }
-
-
-    /** Retourne le prix d'achat pour 1 h, -1 si impossible à trouver */
-    public function getHourBuyPrice()
-    {
-        $lines = $this->data->lines;
-        foreach ($lines as $line) {
-            if (strpos($line->ref, 'H_') === 0) {
-                return (float) $line->pa_ht;
-            }
-        }
-        return -1;
-    }
-
-
-    /** Retourne le code du produit pour les heures */
-    public function getHourProductID(): ?string
-    {
-        $lines = $this->data->lines;
-        foreach ($lines as $line) {
-            if (strpos($line->ref, 'H_') === 0) {
-                return $line->fk_product;
-            }
-        }
-        return null;
-    }
-
-
-
-
-
-    public function getDureeEnHeure(): ?float
-    {
-        // Retourne la valeur convertie en flottant si elle existe, sinon retourne null
-        return isset($this->data->array_options->options_dureenh) ? (float)$this->data->array_options->options_dureenh : null;
-    }
-
-    public function getFinanceur(): ?Financeur
-    {
-        return Financeur::tryFrom($this->data->array_options->options_financeur ?? null);
-    }
-
-    public function getConditionDeFacturation(): ?ConditionDeFacturation
-    {
-        return ConditionDeFacturation::tryFrom($this->data->array_options->options_conditionsdefacturation ?? null);
-    }
-
-
-    // Récupère le code affaire
-    public function getAffaireCode(): ?string
-    {
-        return $this->data->array_options->options_codeaffaire ?? null;
-    }
-
-    // Récupère le nom du formateur
-    public function getTrainerName(): ?string
-    {
-        return $this->data->array_options->options_formateur ?? null;
-    }
-
-    // Récupère le nom des stagiaires
-    public function getTraineeNames(): ?string
-    {
-        return $this->data->array_options->options_stagiaires ?? null;
-    }
-
-    // Récupère l'intitulé de la formation
-    public function getTrainingTitle(): ?string
-    {
-        return $this->data->array_options->options_intituleformation ?? null;
-    }
-
-    // Récupère la thématique  
-    public function getThematique(): ?string
-    {
-        return $this->data->array_options->options_thematique ?? null;
-    }
-
-    // Fonction pour obtenir le code de langue à partir de la thématique
-    public function getLanguageId(): ?string
-    {
-        $thematique = $this->getThematique();
-
-        // Tableau de correspondance thématique => code langue
-        $languageMap = [
-            10 => 'en', // Anglais
-            20 => 'de', // Allemand
-            30 => 'ar', // Arabe
-            40 => 'zh', // Chinois
-            50 => 'es', // Espagnol
-            60 => 'fle', // Français (FLE)
-            70 => 'it', // Italien
-            80 => 'ja', // Japonais
-            85 => 'lsf', // Langue des signes français (LSF)
-            90 => 'pt', // Portugais
-            100 => 'ru' // Russe
-        ];
-
-        // Retourne le code langue ou null si inconnu
-        return $languageMap[$thematique] ?? null;
-    }
-
-
-
-    // Récupère le taux de sous-traitance
-    public function getSubcontractingRate(): ?string
-    {
-        return $this->data->array_options->options_soustraitance ?? null;
-    }
-
-
-    public function getLevel($levelInt): ?string
-    {
-
-        $levelMapping = [
-            0  => 'NonDefini',
-            10 => 'A1Moins',
-            11 => 'A1',
-            12 => 'A1Plus',
-            20 => 'A2Moins',
-            21 => 'A2',
-            22 => 'A2Plus',
-            30 => 'DebutB1',
-            31 => 'MiB1',
-            32 => 'FinB1',
-            40 => 'B2Moins',
-            41 => 'B2',
-            42 => 'B2Plus',
-            50 => 'C1',
-            60 => 'C2'
-        ];
-
-        return $levelMapping[$levelInt] ?? 'NonDefini';
-    }
-
-    public function getStartLevel(): ?string
-    {
-
-        $level = $this->data->array_options->options_niveaudepart ?? null;
-        return $this->getLevel($level);
-    }
-
-    public function getEndLevel(): ?string
-    {
-
-        $level = $this->getOption("option_niveaufin");
-        return $this->getLevel($level);
-    }
-    // Récupère la date de début en timestamp
-    public function getStartDateTimestamp(): ?int
-    {
-        return isset($this->data->array_options->options_datedebut)
-            ? (int) $this->data->array_options->options_datedebut
-            : null;
-    }
-
-    /*$ Retourne la date sous forme de string compatible avec les entries Gravity Forms Y-m-d */
-    public function getStartDate(): ?string
-    {
-        return $this->getFormattedDate($this->getStartDateTimestamp());
-    }
-
-    // Récupère la date de fin en timestamp
-    public function getEndDateTimestamp(): ?int
-    {
-        return isset($this->data->array_options->options_datedefin)
-            ? (int) $this->data->array_options->options_datedefin
-            : null;
-    }
-
-    public function getEndDate(): ?string
-    {
-        return $this->getFormattedDate($this->getEndDateTimestamp());
-    }
-
-    // Récupère la durée en heures
-    public function getDurationHours(): ?float
-    {
-        return isset($this->data->array_options->options_dureenh)
-            ? (float) $this->data->array_options->options_dureenh
-            : null;
-    }
-
-    // Récupère le lieu de la formation
-    public function getLocation(): ?string
-    {
-        return $this->data->array_options->options_lieu ?? null;
-    }
-
-    // Récupère le code financeur
-    public function getFinancerCode(): ?string
-    {
-        return $this->data->array_options->options_financeur ?? null;
-    }
-
-    // Récupère le numéro de dossier CPF
-    public function getCpfFileNumber(): ?string
-    {
-        return $this->data->array_options->options_dossiercpf ?? null;
-    }
-
 
 
     public function getContactsIds(): array
@@ -280,21 +77,6 @@ class DolibarrProposal extends DolibarrObject
         return  $this->data->contacts_ids;
     }
 
-
-    public function getCertification(): ?Certification
-    {
-        return Certification::tryFrom($this->data->array_options->options_certification ?? null);
-    }
-
-    public function getDateDeDebut(): ?DateTime
-    {
-        return isset($this->data->array_options->options_datedebut) ? (new DateTime())->setTimestamp((int)$this->data->array_options->options_datedebut) : null;
-    }
-
-    public function getDateDeFin(): ?DateTime
-    {
-        return isset($this->data->array_options->options_datedefin) ? (new DateTime())->setTimestamp((int)$this->data->array_options->options_datedefin) : null;
-    }
 
 
     /**
@@ -319,33 +101,6 @@ class DolibarrProposal extends DolibarrObject
 
         return $total;
     }
-
-    public function getElearningPlatform(): ?string
-    {
-        // On associe le code gravity form attendu au code produit dans dolibar (EL_....)
-        $platforms = [
-            'EL_7Speaking' => '7Speaking',
-            'EL_CAMBRIDGE_ONLINE' => 'Cambridge',
-            'EL_GS_12M' => 'GlobeSpeaker',
-            'EL_GS_3M' => 'GlobeSpeaker',
-            'EL_GS_6M' => 'GlobeSpeaker',
-            'EL_MyCow' => 'MyCow'
-        ];
-
-        if (!isset($this->data->lines) || !is_array($this->data->lines)) {
-            return null;
-        }
-
-        foreach ($this->data->lines as $line) {
-            if (isset($line->ref) && str_starts_with($line->ref, 'EL_')) {
-                return $platforms[$line->ref] ?? null;
-            }
-        }
-
-        return "Aucun";
-    }
-
-
 
 
     /**
@@ -453,7 +208,7 @@ class DolibarrProposal extends DolibarrObject
 
     // Ajoutez d'autres getters ici selon les champs disponibles dans votre réponse API
 
-    public static function getProposal($proposalRef, $retryCount = 3, $initialDelaySeconds = 10): ?DolibarrProposal
+    public static function getProposal($proposalRef, $retryCount = 3, $initialDelaySeconds = 10): ?static
     {
         $endpoint = "/proposals/ref/" . $proposalRef . "?contact_list=0";
         $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
