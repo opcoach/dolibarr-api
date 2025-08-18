@@ -54,12 +54,21 @@ if ($proposal) {
 You can extend the base classes for customization. For example:
 
 ```php
-class OPCoachProposal extends DolibarrProposal {
+class MyProposal extends DolibarrProposal {
+
+    // Mus override this method to get MyProposal instances when calling ancestor methods.
+   protected static function getProposalClass(): string
+   {
+        return MyProposal::class;
+   }
+
     public function getFinanceur(): ?string {
         return $this->data->financeur ?? null;
     }
 }
 ```
+
+then call MyProposal::getProposal('XXXXX') to get  instances of MyProposal. 
 
 ## Extensibility
 
