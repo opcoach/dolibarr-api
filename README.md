@@ -19,7 +19,7 @@ A lightweight and extensible WordPress plugin designed to interact with the Doli
 
 - PHP 8.1 or higher
 - WordPress 6.8.2 or higher
-- A working Dolibarr instance with REST API enabled
+- A working Dolibarr instance (21.0 or higher) with REST API enabled
 - Valid Dolibarr API key
 
 ## Installation
