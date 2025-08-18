@@ -5,8 +5,10 @@
 class DolibarrProposal extends DolibarrObject
 {
 
-    // Définit la classe à utiliser pour instancier les proposition (voir getProposal)
-    protected static string $proposalClass = self::class;
+    protected static function getInvoiceClass(): string  { return DolibarrInvoice::class; }
+
+    protected static function getProposalClass(): string { return DolibarrProposal::class; }
+
 
     public function getTotalHt()
     {
@@ -120,7 +122,6 @@ class DolibarrProposal extends DolibarrObject
     }
 
 
-
     /**
      * Récupère la liste des objets DolibarrInvoice associés à cette proposition.
      *
@@ -133,8 +134,10 @@ class DolibarrProposal extends DolibarrObject
         // Récupère les IDs des factures associées à la proposition
         $invoiceIds = $this->getInvoiceIds();
 
+        $invoiceClass = $this->getInvoiceClass();
+
         foreach ($invoiceIds as $invoiceId) {
-            $invoice = DolibarrInvoice::getInvoiceFromID($invoiceId);
+            $invoice = $invoiceClass::getInvoiceFromID($invoiceId);
             if ($invoice) {
                 // Si aucun filtre, ou si le type correspond au filtre, on l'ajoute
                 if (is_null($filterType) || $invoice->getType() === $filterType->value) {
@@ -152,10 +155,11 @@ class DolibarrProposal extends DolibarrObject
 
     public static function getProposal($proposalRef, $retryCount = 3, $initialDelaySeconds = 10): ?static
     {
+        $class = static::getProposalClass(); 
+
         $endpoint = "/proposals/ref/" . $proposalRef . "?contact_list=0";
         $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
 
-        $class = static::$proposalClass;
         return $data ? new $class($data) : null;
     }
 

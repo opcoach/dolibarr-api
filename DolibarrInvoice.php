@@ -12,9 +12,15 @@ enum DolibarrInvoiceType: string {
 }
 
 class DolibarrInvoice extends DolibarrObject {
-   
 
-   
+
+    protected static function getInvoiceClass(): string
+    {
+        return DolibarrInvoice::class;
+    }
+
+
+
     public function getTotalHt() {
         return $this->data->total_ht ?? null;
     }
@@ -57,22 +63,22 @@ class DolibarrInvoice extends DolibarrObject {
     }
     
     // Ajoutez d'autres getters ici selon les champs disponibles dans votre réponse API
-    public static function getInvoice($invoiceRef, $retryCount = 3, $initialDelaySeconds = 10): ?DolibarrInvoice
+    public static function getInvoice($invoiceRef, $retryCount = 3, $initialDelaySeconds = 10): ?static
     {
         $endpoint = "/invoices/ref/" . $invoiceRef;
         $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
-
-        return $data ? new self($data) : null;
+        $invoiceClass = static::getInvoiceClass();
+        return $data ? new $invoiceClass($data) : null;
     }
   
   // Retourne une facture à partir de son ID (l'id n'est pas la ref)
-  public static function getInvoiceFromID($invoiceId, $retryCount = 3, $initialDelaySeconds = 10): ?DolibarrInvoice
+  public static function getInvoiceFromID($invoiceId, $retryCount = 3, $initialDelaySeconds = 10): ?static
   {
       $endpoint = "/invoices/" . $invoiceId;
       $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
 
-      return $data ? new self($data) : null;
-  }
+    $invoiceClass = static::getInvoiceClass();
+    return $data ? new $invoiceClass($data) : null;  }
 
     
 }
