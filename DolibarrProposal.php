@@ -2,69 +2,11 @@
 
 // Gestion de la récupération des données de proposition commerciale à partir de Dolibarr
 
-
-// Enumération pour les certifications (attribut supplémentaire de proposition commerciale dans dolibarr)
-enum Certification: string
-{
-    case CLOE = '2';
-    case Lillate = '3';
-    case Linguaskill = '4';
-    case English360 = '5';
-    case TOEIC = '6';
-    case Pipplet = '7';
-    case Bright = '8';
-    case TosaPhotoshop = '9';
-    case TosaExcel = '10';
-    case TosaVB2019 = '11';
-}
-
-
-//  Enumération pour les financeurs (défini dans dolibarr, attribut supplémentaire de proposition commerciale)
-enum Financeur: string
-{
-    case NonDefini = '1';
-    case Entreprise = '10';
-    case ServicePublic = '12';
-    case Personnel = '15';
-    case CPF = '20';
-    case AFDAS = '30';
-    case ATLAS = '40';
-    case Uniformation = '50';
-    case AKTO = '60';
-    case OCAPIAT = '70';
-    case OPCO2i = '80';
-    case Construction = '90';
-    case OPCOMobilite = '100';
-    case OPCOEP = '110';
-    case OPCSante = '120';
-    case OPCCommerce = '130';
-    case PlaceDeLaFormation = '200';
-    case PoleEmploi = '300';
-}
-
-// Enumération pour les conditions de facturation (attribut supplémentaire de proposition commerciale dans dolibarr)
-enum ConditionDeFacturation: string
-{
-    case NonDefini = '1';
-    case VingtCinqPourcentDebutSoldeFin = '10';
-    case CinquantePourcentDemarrageSoldeFin = '20';
-    case CinquantePourcentMiParcoursSoldeFin = '25';
-    case CinquantePourcentSignatureSoldeFin = '30';
-    case CinquantePourcentDemarrageTrenteMiParcoursVingtFin = '40';
-    case CentPourcentDebut = '45';
-    case CentPourcentFin = '50';
-    case Autre = '60';
-}
-
-enum Banque: int
-{
-    case BPOC = 1;
-    case Wise = 2;
-}
-
-
 class DolibarrProposal extends DolibarrObject
 {
+
+    // Définit la classe à utiliser pour instancier les proposition (voir getProposal)
+    protected static string $proposalClass = self::class;
 
     public function getTotalHt()
     {
@@ -213,7 +155,8 @@ class DolibarrProposal extends DolibarrObject
         $endpoint = "/proposals/ref/" . $proposalRef . "?contact_list=0";
         $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
 
-        return $data ? new self($data) : null;
+        $class = static::$proposalClass;
+        return $data ? new $class($data) : null;
     }
 
 
