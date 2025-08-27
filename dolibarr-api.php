@@ -17,3 +17,4 @@ require_once plugin_dir_path(__FILE__) . 'DolibarrSupplierInvoice.php';
 require_once plugin_dir_path(__FILE__) . 'DolibarrSupplierOrder.php';
 require_once plugin_dir_path(__FILE__) . 'DolibarrProduct.php';
 require_once plugin_dir_path(__FILE__) . 'DolibarrShortCode.php';
+require_once plugin_dir_path(__FILE__) . 'DolibarrThirdParty.php';

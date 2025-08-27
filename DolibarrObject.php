@@ -146,76 +146,85 @@ abstract class DolibarrObject
     }
 
 
-    private static function sendToDolibarr(string $method, string $endpoint, $payload, int $retryCount = 3, int $initialDelaySeconds = 10): ?object
-    {
-        $apiKey = DOLIBARR_API_KEY;
-        $url = DOLIBARR_REST_URL . $endpoint;
+   private static function sendToDolibarr(string $method, string $endpoint, $payload, int $retryCount = 3, int $initialDelaySeconds = 10, array $extraHeaders = []): ?object
+{
+    $apiKey = DOLIBARR_API_KEY;
+    $url = rtrim(DOLIBARR_REST_URL, '/') . $endpoint;
 
-        $jsonPayload = json_encode(is_object($payload) ? (array)$payload : $payload);
+    $jsonPayload = json_encode(is_object($payload) ? (array)$payload : $payload, JSON_UNESCAPED_UNICODE);
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));  // "POST" ou "PUT"
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "DOLAPIKEY: $apiKey",
-            "Content-Type: application/json"
-        ]);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HEADER, true); // <-- pour séparer header/body
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));
+    $headers = array_merge([
+        "DOLAPIKEY: $apiKey",
+        "Content-Type: application/json",
+        "Accept: application/json"
+    ], $extraHeaders);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    if ($jsonPayload !== false) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    }
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLINFO_HEADER_OUT, true);
 
-        $attempts = 0;
-        $response = false;
+    $attempt = 0;
+    while (true) {
+        $raw = curl_exec($ch);
+        $attempt++;
 
-        while ($attempts < $retryCount && !$response) {
-            $response = curl_exec($ch);
-            $attempts++;
+        if ($raw === false) {
+            error_log("Tentative $method $attempt : Erreur cURL : " . curl_error($ch));
+        } else {
+            $httpCode   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+            $respHeaders = substr($raw, 0, $headerSize);
+            $body        = substr($raw, $headerSize);
 
-            if (curl_errno($ch)) {
-                error_log("Tentative $method $attempts : Erreur cURL : " . curl_error($ch));
-                $response = false;
-            } else {
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                if (!in_array($httpCode, [200, 201])) {
-                    error_log("Tentative $method $attempts : Erreur HTTP : $httpCode pour l'URL : $url");
-                    $response = false;
+            if ($httpCode === 200 || $httpCode === 201) {
+                // Réponse OK
+                $data = json_decode($body);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return is_int($data) ? (object)['result' => $data] : $data;
+                }
+                error_log("Réponse non-JSON ($method $httpCode) : " . substr($body, 0, 1000));
+                return null;
+            }
 
-                    if ($httpCode == 429) {
-                        sleep($initialDelaySeconds * $attempts);
-                    }
-                } else {
-                    break;
+            // Log détaillé sur erreur
+            $bodyPreview = trim(mb_substr($body ?? '', 0, 1000));
+            error_log("Erreur HTTP $httpCode $method $url (tentative $attempt). Body: " . ($bodyPreview !== '' ? $bodyPreview : '[vide]'));
+
+            // Politique de retry :
+            // - 429 et 5xx : on retente
+            // - 4xx (sauf 429) : ne pas retenter (erreur côté client/config)
+            if ($httpCode == 429 || ($httpCode >= 500 && $httpCode <= 599)) {
+                if ($attempt < $retryCount) {
+                    sleep($initialDelaySeconds * $attempt);
+                    continue;
                 }
             }
-
-            if (!$response && $httpCode != 429) {
-                sleep($initialDelaySeconds);
-            }
+            // 4xx non-429 → stop net (ex: 401/403, liste d'IP, droits, payload invalide, etc.)
+            break;
         }
 
-        curl_close($ch);
-
-        if (!$response) {
-            error_log("Échec de $method vers Dolibarr après $retryCount tentatives.");
-            return null;
+        if ($attempt >= $retryCount) {
+            break;
         }
-
-        $response = mb_convert_encoding($response, 'UTF-8', 'auto');
-        $response = stripslashes($response);
-
-        error_log("Réponse Dolibarr ($method) : " . $response);
-        $data = json_decode($response);
-
-        if (json_last_error() === JSON_ERROR_NONE) {
-            if (is_int($data)) {
-                return (object)['result' => $data];
-            }
-            return $data;
-        } else {
-            error_log("Erreur JSON ($method) : " . json_last_error_msg());
-            return null;
-        }
+        sleep($initialDelaySeconds);
     }
+
+    // Derniers détails utiles pour debug
+    $reqHeaders = curl_getinfo($ch, CURLINFO_HEADER_OUT);
+    if ($reqHeaders) {
+        error_log("Headers requête envoyés:\n$reqHeaders");
+    }
+
+    curl_close($ch);
+    error_log("Échec de $method vers Dolibarr après $attempt tentative(s).");
+    return null;
+}
 
     /**
      * Effectue une requête POST vers l'API REST de Dolibarr.
@@ -236,6 +245,30 @@ abstract class DolibarrObject
     {
         return self::sendToDolibarr('PUT', $endpoint, $payload, $retryCount, $initialDelaySeconds);
     }
+
+ 
+        public static function ping(string $endpoint = '/status'): bool
+    {
+        // Appel "léger" : 1 seule tentative, 1s d’attente si besoin.
+        // On suppose que /status renvoie 200 si OK (Dolibarr REST module).
+        $data = self::fetchFromDolibarr($endpoint, /* retryCount */ 1, /* initialDelaySeconds */ 1);
+
+        // fetchFromDolibarr() retourne null si HTTP≠200 ou JSON invalide
+        return $data !== null;
+    }
+
+
+
+    /**
+     * Crée un objet dans Dolibarr.
+     *
+     * Must be implemented in child classes.
+     */
+    public function createInDolibarr(): ?object
+    {
+       return null;
+    }
+
 
 
     public function printData()
@@ -329,4 +362,7 @@ abstract class DolibarrObject
 
         return $filenames;
     }
+
+
+    
 }

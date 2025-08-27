@@ -89,10 +89,6 @@ class DolibarrSupplierInvoice extends DolibarrObject
     /**
      * Crée une facture fournisseur dans Dolibarr.
      *
-     * @param int $supplier_id ID du fournisseur dans Dolibarr
-     * @param string $label Libellé général de la facture
-     * @param string $date Date de la facture (YYYY-MM-DD)
-     * @param int|null $fk_project ID du projet Dolibarr (optionnel)
      * @return array|null Résultat de l’API ou null en cas d’échec
      */
     public function createInDolibarr(): ?object
