@@ -15,6 +15,16 @@ class DolibarrProposal extends DolibarrObject
         return $this->data->total_ht ?? null;
     }
 
+      /**
+     * Crée un proposal  dans Dolibarr.
+     * @return array|null Résultat de l’API ou null en cas d’échec
+     */
+    public function createInDolibarr(): ?object
+    {
+        $result =  DolibarrObject::postToDolibarr('/proposals', $this->data);
+
+        return $result;
+    }
 
     public function getContactsIds(): array
     {
