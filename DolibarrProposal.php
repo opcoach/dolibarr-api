@@ -175,7 +175,8 @@ class DolibarrProposal extends DolibarrObject
         if (is_array($data)) {
             foreach ($data as $proposal) {
                 if (is_object($proposal) && isset($proposal->ref) && $proposal->ref === $proposalRef) {
-                    return new $class($proposal);
+                    $proposalId = $proposal->id ?? null;
+                    return $proposalId ? static::getProposalFromID((string) $proposalId, $retryCount, $initialDelaySeconds) : null;
                 }
             }
 
@@ -183,10 +184,20 @@ class DolibarrProposal extends DolibarrObject
         }
 
         if (is_object($data) && isset($data->ref) && $data->ref === $proposalRef) {
-            return new $class($data);
+            $proposalId = $data->id ?? null;
+            return $proposalId ? static::getProposalFromID((string) $proposalId, $retryCount, $initialDelaySeconds) : null;
         }
 
         return null;
+    }
+
+    public static function getProposalFromID($proposalId, $retryCount = 3, $initialDelaySeconds = 10): ?static
+    {
+        $class = static::getProposalClass();
+        $endpoint = "/proposals/" . $proposalId;
+        $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
+
+        return $data ? new $class($data) : null;
     }
 
 
