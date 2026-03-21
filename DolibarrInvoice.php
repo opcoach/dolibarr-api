@@ -65,10 +65,28 @@ class DolibarrInvoice extends DolibarrObject {
     // Ajoutez d'autres getters ici selon les champs disponibles dans votre réponse API
     public static function getInvoice($invoiceRef, $retryCount = 3, $initialDelaySeconds = 10): ?static
     {
-        $endpoint = "/invoices/ref/" . $invoiceRef;
+        $escapedRef = str_replace(['\\', "'"], ['\\\\', "\\'"], (string) $invoiceRef);
+        $sqlfilters = urlencode("(t.ref:like:'{$escapedRef}')");
+        $endpoint = "/invoices?contact_list=1&sqlfilters=" . $sqlfilters;
         $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
-        $invoiceClass = static::getInvoiceClass();
-        return $data ? new $invoiceClass($data) : null;
+
+        if (is_array($data)) {
+            foreach ($data as $invoice) {
+                if (is_object($invoice) && isset($invoice->ref) && $invoice->ref === $invoiceRef) {
+                    $invoiceClass = static::getInvoiceClass();
+                    return new $invoiceClass($invoice);
+                }
+            }
+
+            return null;
+        }
+
+        if (is_object($data) && isset($data->ref) && $data->ref === $invoiceRef) {
+            $invoiceClass = static::getInvoiceClass();
+            return new $invoiceClass($data);
+        }
+
+        return null;
     }
   
   // Retourne une facture à partir de son ID (l'id n'est pas la ref)

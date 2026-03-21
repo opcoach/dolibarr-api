@@ -167,10 +167,26 @@ class DolibarrProposal extends DolibarrObject
     {
         $class = static::getProposalClass(); 
 
-        $endpoint = "/proposals/ref/" . $proposalRef . "?contact_list=0";
+        $escapedRef = str_replace(['\\', "'"], ['\\\\', "\\'"], (string) $proposalRef);
+        $sqlfilters = urlencode("(t.ref:like:'{$escapedRef}')");
+        $endpoint = "/proposals?contact_list=0&sqlfilters=" . $sqlfilters;
         $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
 
-        return $data ? new $class($data) : null;
+        if (is_array($data)) {
+            foreach ($data as $proposal) {
+                if (is_object($proposal) && isset($proposal->ref) && $proposal->ref === $proposalRef) {
+                    return new $class($proposal);
+                }
+            }
+
+            return null;
+        }
+
+        if (is_object($data) && isset($data->ref) && $data->ref === $proposalRef) {
+            return new $class($data);
+        }
+
+        return null;
     }
 
 
