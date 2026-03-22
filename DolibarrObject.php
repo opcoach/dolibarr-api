@@ -246,6 +246,11 @@ abstract class DolibarrObject
         return self::sendToDolibarr('PUT', $endpoint, $payload, $retryCount, $initialDelaySeconds);
     }
 
+    public static function deleteToDolibarr($endpoint, $retryCount = 3, $initialDelaySeconds = 10): ?object
+    {
+        return self::sendToDolibarr('DELETE', $endpoint, [], $retryCount, $initialDelaySeconds);
+    }
+
  
         public static function ping(string $endpoint = '/status'): bool
     {
