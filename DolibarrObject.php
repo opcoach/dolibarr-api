@@ -131,18 +131,33 @@ abstract class DolibarrObject
             return null;
         }
 
-        // Nettoyage des caractères problématiques
-        $response = mb_convert_encoding($response, 'UTF-8', 'auto');
-        $response = stripslashes($response);
+        // Nettoyage non destructif uniquement.
+        // Important: ne pas utiliser stripslashes() ici, car cela casse les
+        // séquences JSON valides comme \u00e9 ou les guillemets échappés.
+        $response = trim($response);
+        $response = preg_replace('/^\xEF\xBB\xBF/', '', $response);
 
-        $data = json_decode($response);
+        $data = json_decode($response, false, 512, JSON_INVALID_UTF8_SUBSTITUTE);
 
         if (json_last_error() === JSON_ERROR_NONE) {
+            // Certains retours Dolibarr peuvent être double-encodés:
+            // json_decode() renvoie alors une chaîne contenant du JSON.
+            if (is_string($data)) {
+                $maybeJson = trim($data);
+                if ($maybeJson !== '' && ($maybeJson[0] === '[' || $maybeJson[0] === '{')) {
+                    $decodedAgain = json_decode($maybeJson, false, 512, JSON_INVALID_UTF8_SUBSTITUTE);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        return $decodedAgain;
+                    }
+                }
+            }
+
             return $data;
-        } else {
-            error_log('Erreur de décodage JSON : ' . json_last_error_msg());
-            return null;
         }
+
+        error_log('Erreur de décodage JSON : ' . json_last_error_msg());
+        error_log('Réponse brute Dolibarr (aperçu) : ' . mb_substr($response, 0, 1000));
+        return null;
     }
 
 
