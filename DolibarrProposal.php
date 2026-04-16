@@ -197,6 +197,22 @@ class DolibarrProposal extends DolibarrObject
         $endpoint = "/proposals/" . $proposalId;
         $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
 
+        if (is_array($data)) {
+            foreach ($data as $proposal) {
+                if (!is_object($proposal)) {
+                    continue;
+                }
+
+                $currentId = (string) ($proposal->id ?? $proposal->rowid ?? '');
+                if ($currentId !== '' && $currentId === (string) $proposalId) {
+                    return new $class($proposal);
+                }
+            }
+
+            $firstProposal = reset($data);
+            return is_object($firstProposal) ? new $class($firstProposal) : null;
+        }
+
         return $data ? new $class($data) : null;
     }
 

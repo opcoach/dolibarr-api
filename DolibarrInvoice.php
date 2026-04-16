@@ -61,6 +61,70 @@ class DolibarrInvoice extends DolibarrObject {
 
         return null;
     }
+
+    /**
+     * Récupère les IDs de propositions liées à cette facture.
+     *
+     * @return array<int, string>
+     */
+    public function getProposalIds(): array
+    {
+        $proposalIds = $this->extractProposalIdsFromLinkedObjects();
+        if ($proposalIds !== []) {
+            return $proposalIds;
+        }
+
+        $invoiceId = $this->getId();
+        if ($invoiceId === null || $invoiceId === '') {
+            return [];
+        }
+
+        $fullInvoice = static::getInvoiceFromID($invoiceId);
+        if (!$fullInvoice) {
+            return [];
+        }
+
+        return $fullInvoice->extractProposalIdsFromLinkedObjects();
+    }
+
+    /**
+     * Extrait les IDs de propositions depuis linkedObjectsIds sans requête complémentaire.
+     *
+     * @return array<int, string>
+     */
+    private function extractProposalIdsFromLinkedObjects(): array
+    {
+        $proposalIds = $this->getLinkedObjectIds('proposal');
+        if ($proposalIds !== []) {
+            return $proposalIds;
+        }
+
+        return $this->getLinkedObjectIds('propal');
+    }
+
+    /**
+     * Récupère la ref de la proposition liée à cette facture.
+     *
+     * @return string|null
+     */
+    public function getProposalRef(): ?string
+    {
+        if (!class_exists('DolibarrProposal')) {
+            return null;
+        }
+
+        foreach ($this->getProposalIds() as $proposalId) {
+            $proposal = DolibarrProposal::getProposalFromID($proposalId);
+            if ($proposal) {
+                $proposalRef = trim((string) $proposal->getRef());
+                if ($proposalRef !== '') {
+                    return $proposalRef;
+                }
+            }
+        }
+
+        return null;
+    }
     
     // Ajoutez d'autres getters ici selon les champs disponibles dans votre réponse API
     public static function getInvoice($invoiceRef, $retryCount = 3, $initialDelaySeconds = 10): ?static
@@ -96,6 +160,23 @@ class DolibarrInvoice extends DolibarrObject {
       $data = parent::fetchFromDolibarr($endpoint, $retryCount, $initialDelaySeconds);
 
     $invoiceClass = static::getInvoiceClass();
+
+    if (is_array($data)) {
+        foreach ($data as $invoice) {
+            if (!is_object($invoice)) {
+                continue;
+            }
+
+            $currentId = (string) ($invoice->id ?? $invoice->rowid ?? '');
+            if ($currentId !== '' && $currentId === (string) $invoiceId) {
+                return new $invoiceClass($invoice);
+            }
+        }
+
+        $firstInvoice = reset($data);
+        return is_object($firstInvoice) ? new $invoiceClass($firstInvoice) : null;
+    }
+
     return $data ? new $invoiceClass($data) : null;  }
 
     

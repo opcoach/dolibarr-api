@@ -68,6 +68,88 @@ abstract class DolibarrObject
         return $this->get('ref_ext');
     }
 
+    /**
+     * Retourne les objets liés exposés par Dolibarr sous linkedObjectsIds.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function getLinkedObjectsIds(): array
+    {
+        if (!isset($this->data->linkedObjectsIds)) {
+            return [];
+        }
+
+        $linkedObjects = $this->data->linkedObjectsIds;
+        if (is_object($linkedObjects)) {
+            $linkedObjects = (array) $linkedObjects;
+        }
+
+        if (!is_array($linkedObjects)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($linkedObjects as $type => $ids) {
+            if (is_object($ids)) {
+                $ids = (array) $ids;
+            }
+
+            if (!is_array($ids)) {
+                $ids = [$ids];
+            }
+
+            $values = [];
+            foreach ($ids as $id) {
+                if ($id === null || $id === '') {
+                    continue;
+                }
+
+                $values[] = (string) $id;
+            }
+
+            if ($values !== []) {
+                $normalized[(string) $type] = array_values(array_unique($values));
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Retourne les IDs liés pour un type donné.
+     *
+     * @param string $type Type lié, ex: propal, facture, order_supplier.
+     * @return array<int, string>
+     */
+    public function getLinkedObjectIds(string $type): array
+    {
+        $type = trim($type);
+        if ($type === '') {
+            return [];
+        }
+
+        $linkedObjects = $this->getLinkedObjectsIds();
+        if (isset($linkedObjects[$type])) {
+            return $linkedObjects[$type];
+        }
+
+        $aliases = [
+            'proposal' => 'propal',
+            'proposals' => 'propal',
+            'propal' => 'proposal',
+            'invoice' => 'facture',
+            'invoices' => 'facture',
+            'facture' => 'invoice',
+        ];
+
+        $alias = $aliases[strtolower($type)] ?? null;
+        if ($alias !== null && isset($linkedObjects[$alias])) {
+            return $linkedObjects[$alias];
+        }
+
+        return [];
+    }
+
 
     public function getStatus(): ?string
     {
