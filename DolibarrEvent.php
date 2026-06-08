@@ -65,7 +65,9 @@ class DolibarrEvent extends DolibarrObject
 
     public static function findByContactAndMarker(int $contactId, string $marker, ?string $typeCode = null): ?self
     {
-        $endpoint = '/agendaevents?sortfield=t.rowid&sortorder=DESC&limit=500';
+        $escapedMarker = self::escapeSqlLikeValue($marker);
+        $sqlFilters = urlencode("(t.note:like:'%{$escapedMarker}%')");
+        $endpoint = '/agendaevents?sortfield=t.rowid&sortorder=DESC&limit=20&sqlfilters=' . $sqlFilters;
         $events = self::fetchFromDolibarr($endpoint, 1, 1);
         if (!is_array($events)) {
             return null;
@@ -88,6 +90,8 @@ class DolibarrEvent extends DolibarrObject
 
             $text = implode("\n", [
                 (string) ($event->label ?? ''),
+                (string) ($event->note ?? ''),
+                (string) ($event->private_note ?? ''),
                 (string) ($event->note_private ?? ''),
                 (string) ($event->note_public ?? ''),
                 (string) ($event->description ?? ''),
@@ -122,6 +126,9 @@ class DolibarrEvent extends DolibarrObject
             'datef' => $end ? $end->getTimestamp() : '',
             'userownerid' => $userId,
             'fulldayevent' => 0,
+            'punctual' => 1,
+            'percentage' => 100,
+            'priority' => 0,
             'transparency' => '1',
         ];
     
@@ -132,6 +139,7 @@ class DolibarrEvent extends DolibarrObject
             $data['elementtype'] = $elementType;
             $data['elementid'] = $elementId;
             $data['contactid'] = $elementId;
+            $data['fk_contact'] = $elementId;
         } else {
             $data['elementtype'] = $elementType;
             $data['elementid'] = $elementId;
@@ -139,9 +147,12 @@ class DolibarrEvent extends DolibarrObject
     
         if ($thirdpartyId !== null) {
             $data['socid'] = $thirdpartyId;
+            $data['fk_soc'] = $thirdpartyId;
         }
 
         if ($description !== null && trim($description) !== '') {
+            $data['note'] = $description;
+            $data['private_note'] = $description;
             $data['note_private'] = $description;
             $data['note_public'] = $description;
         }
@@ -172,8 +183,23 @@ class DolibarrEvent extends DolibarrObject
         }
     
         $eventData = json_decode($response);
+        if (is_int($eventData)) {
+            return new self((object) ['id' => $eventData]);
+        }
+        if (is_string($eventData) && ctype_digit($eventData)) {
+            return new self((object) ['id' => (int) $eventData]);
+        }
     
         return $eventData ? new self($eventData) : null;
+    }
+
+    private static function escapeSqlLikeValue(string $value): string
+    {
+        return str_replace(
+            ["\\", "'", "%", "_"],
+            ["\\\\", "\\'", "\\%", "\\_"],
+            $value
+        );
     }
     // Ajoute ici des getters si besoin, comme getId(), getTitle() etc.
 
